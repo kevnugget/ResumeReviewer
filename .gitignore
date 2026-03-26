@@ -1,0 +1,15 @@
+# Python virtual environment
+backend/venv/
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# Environment variables (API keys — keep secret!)
+.env
+
+# Node modules (React dependencies)
+frontend/node_modules/
+
+# Build output
+frontend/dist/
