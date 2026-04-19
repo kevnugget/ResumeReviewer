@@ -1,5 +1,7 @@
 # Resume Reviewer
 
+**NOTE: THIS IS AN ON-GOING PROJECT** 
+
 A full-stack web application that allows users to upload their resume and receive AI-powered optimization suggestions. The app analyzes resumes and provides actionable feedback to help job seekers improve their chances of landing interviews.
 
 ## Features
