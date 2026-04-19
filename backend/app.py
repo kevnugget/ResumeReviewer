@@ -1,6 +1,7 @@
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from parser import extract_text
+from partitioner import partition
 
 app = FastAPI()
 
@@ -30,8 +31,10 @@ async def review_resume(
     else:
         resume_text = text  # user pasted text directly, use it as-is
 
-    # placeholder - will wire in partitioner, RAG, and LLM next
+    sections = partition(resume_text)  # split resume into labeled sections
+
+    # placeholder - will wire in RAG and LLM next
     return {
-        "sections": {},
-        "overall": f"Extracted {len(resume_text)} characters from resume."
+        "sections": sections,
+        "overall": f"Found {len(sections)} sections: {', '.join(sections.keys())}"
     }
