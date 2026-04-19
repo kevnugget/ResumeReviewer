@@ -2,6 +2,7 @@ from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from parser import extract_text
 from partitioner import partition
+from rag import retrieve
 
 app = FastAPI()
 
