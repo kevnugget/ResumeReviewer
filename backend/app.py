@@ -1,8 +1,10 @@
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from parser import extract_text
 
 app = FastAPI()
 
+# let the react frontend on port 5173 talk to this backend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],
@@ -22,8 +24,14 @@ async def review_resume(
     if not file and not text.strip():
         raise HTTPException(status_code=400, detail="Please provide a file or resume text.")
 
-    # Placeholder - will wire in parser, partitioner, RAG, and LLM next
+    if file:
+        raw_bytes = await file.read() 
+        resume_text = extract_text(raw_bytes, file.filename)  # convert to plain text based on file type
+    else:
+        resume_text = text  # user pasted text directly, use it as-is
+
+    # placeholder - will wire in partitioner, RAG, and LLM next
     return {
         "sections": {},
-        "overall": "Backend connected! Parser coming next."
+        "overall": f"Extracted {len(resume_text)} characters from resume."
     }
