@@ -2,7 +2,7 @@ from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from parser import extract_text
 from partitioner import partition
-from rag import retrieve
+from reviewer import review_sections
 
 app = FastAPI()
 
@@ -33,9 +33,9 @@ async def review_resume(
         resume_text = text  # user pasted text directly, use it as-is
 
     sections = partition(resume_text)  # split resume into labeled sections
+    feedback = review_sections(sections)  # get LLM feedback per section using RAG context
 
-    # placeholder - will wire in RAG and LLM next
     return {
-        "sections": sections,
-        "overall": f"Found {len(sections)} sections: {', '.join(sections.keys())}"
+        "sections": feedback,
+        "overall": f"Reviewed {len(feedback)} sections."
     }
