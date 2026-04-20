@@ -18,6 +18,7 @@ function App() {
   const [text, setText] = useState("");
   const [status, setStatus] = useState("");
   const [feedback, setFeedback] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -40,6 +41,7 @@ function App() {
       return;
     }
 
+    setLoading(true);
     setStatus("Reviewing your resume...");
     setFeedback(null);
 
@@ -64,66 +66,102 @@ function App() {
       }
 
       const data = await res.json();
-      setFeedback(data.sections);  // sections is a dict of section -> feedback string
-      setStatus(`Done! Reviewed ${Object.keys(data.sections).length} sections.`);
+      setFeedback(data.sections);
+      setStatus(`Reviewed ${Object.keys(data.sections).length} sections.`);
     } catch (err) {
       setStatus("Could not connect to the backend. Make sure it is running on port 8000.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div style={{ maxWidth: 900, margin: "2rem auto", padding: "1.5rem", fontFamily: "Arial, sans-serif" }}>
-      <h1 style={{ textAlign: "center" }}>AI Resume Optimizer</h1>
-      <p style={{ textAlign: "center", color: "#666" }}>
-        Upload your resume file or paste text below to get AI-powered optimization suggestions.
-      </p>
+    <div style={{ minHeight: "100vh", backgroundColor: "#f5f5f5", fontFamily: "'Segoe UI', Arial, sans-serif" }}>
 
-      <section style={{ marginBottom: "1.5rem" }}>
-        <h2>1. Upload Resume (DOCX / PDF / TXT)</h2>
-        <input type="file" accept=".pdf,.doc,.docx,.txt" onChange={handleFileChange} />
-        {file && <p>Selected file: <strong>{file.name}</strong></p>}
-      </section>
+      {/* header */}
+      <div style={{ backgroundColor: "#1a1a2e", padding: "2.5rem 1rem", textAlign: "center" }}>
+        <h1 style={{ color: "white", margin: 0, fontSize: "2.2rem", fontWeight: 700 }}>AI Resume Reviewer</h1>
+        <p style={{ color: "#a0a8c0", marginTop: "0.5rem", fontSize: "1rem" }}>
+          Upload your resume and get section-by-section AI feedback
+        </p>
+      </div>
 
-      <section style={{ marginBottom: "1.5rem" }}>
-        <h2>2. Or paste your resume text</h2>
-        <textarea
-          value={text}
-          onChange={handleTextChange}
-          placeholder="Paste your resume text here..."
-          rows={12}
-          style={{ width: "100%", padding: "0.75rem", fontSize: "0.95rem", borderColor: "#ccc", borderRadius: 5 }}
-        />
-      </section>
+      <div style={{ maxWidth: 780, margin: "2rem auto", padding: "0 1rem" }}>
 
-      <button
-        onClick={submitResume}
-        style={{
-          width: "100%",
-          padding: "0.85rem 1.2rem",
-          fontSize: "1rem",
-          fontWeight: "bold",
-          color: "white",
-          backgroundColor: "#007bff",
-          border: "none",
-          borderRadius: 6,
-          cursor: "pointer",
-        }}
-      >
-        Optimize Resume
-      </button>
+        {/* upload card */}
+        <div style={{ backgroundColor: "white", borderRadius: 10, padding: "1.5rem", marginBottom: "1.5rem", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+          <h2 style={{ marginTop: 0, fontSize: "1.1rem", color: "#1a1a2e", textAlign: "center" }}>Upload Resume</h2>
+          <div style={{ textAlign: "center" }}>
+          <label style={{
+            display: "inline-block",
+            padding: "0.6rem 1.2rem",
+            backgroundColor: "#2563eb",
+            color: "white",
+            borderRadius: 6,
+            cursor: "pointer",
+            fontSize: "0.9rem",
+            fontWeight: 600,
+            marginBottom: "0.5rem",
+          }}>
+            {file ? "Change File" : "Choose File"}
+            <input
+              type="file"
+              accept=".pdf,.doc,.docx,.txt"
+              onChange={handleFileChange}
+              style={{ display: "none" }}
+            />
+          </label>
+          {file && <p style={{ color: "#555", fontSize: "0.85rem", marginTop: "0.4rem" }}>Selected: <strong>{file.name}</strong></p>}
+          </div>
 
-      <section style={{ marginTop: "1.5rem" }}>
-        <h2>Status</h2>
-        <p><strong>{status || "Ready"}</strong></p>
+          <div style={{ textAlign: "center", color: "#aaa", margin: "1rem 0", fontSize: "0.85rem" }}>— or paste text below —</div>
 
-        {/* render each section's feedback as its own card */}
-        {feedback && Object.entries(feedback).map(([section, text]) => (
-          <div key={section} style={{ marginBottom: "1rem", padding: "1rem", border: "1px solid #ddd", borderRadius: 6, backgroundColor: "#f9f9f9" }}>
-            <h3 style={{ textTransform: "capitalize", marginTop: 0 }}>{section}</h3>
-            <div>{renderFeedback(text)}</div>
+          <textarea
+            value={text}
+            onChange={handleTextChange}
+            placeholder="Paste your resume text here..."
+            rows={10}
+            style={{ width: "100%", padding: "0.75rem", fontSize: "0.9rem", border: "1px solid #ddd", borderRadius: 6, boxSizing: "border-box", resize: "vertical" }}
+          />
+        </div>
+
+        {/* submit button */}
+        <button
+          onClick={submitResume}
+          disabled={loading}
+          style={{
+            width: "100%",
+            padding: "0.9rem",
+            fontSize: "1rem",
+            fontWeight: "bold",
+            color: "white",
+            backgroundColor: loading ? "#7a9fcc" : "#2563eb",
+            border: "none",
+            borderRadius: 8,
+            cursor: loading ? "not-allowed" : "pointer",
+            marginBottom: "1.5rem",
+            transition: "background-color 0.2s",
+          }}
+        >
+          {loading ? "Reviewing..." : "Review My Resume"}
+        </button>
+
+        {/* status */}
+        {status && (
+          <p style={{ textAlign: "center", color: "#555", marginBottom: "1rem", fontSize: "0.9rem" }}>
+            {status}
+          </p>
+        )}
+
+        {/* feedback cards */}
+        {feedback && Object.entries(feedback).sort(([a], [b]) => a === "other" ? 1 : b === "other" ? -1 : 0).map(([section, sectionText]) => (
+          <div key={section} style={{ backgroundColor: "white", borderRadius: 10, padding: "1.5rem", marginBottom: "1rem", boxShadow: "0 2px 8px rgba(0,0,0,0.08)", borderLeft: "4px solid #2563eb" }}>
+            <h3 style={{ marginTop: 0, textTransform: "capitalize", color: "#1a1a2e", fontSize: "1rem" }}>{section}</h3>
+            <div>{renderFeedback(sectionText)}</div>
           </div>
         ))}
-      </section>
+
+      </div>
     </div>
   );
 }
