@@ -19,6 +19,10 @@ function App() {
   const [status, setStatus] = useState("");
   const [feedback, setFeedback] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [resumeContext, setResumeContext] = useState("");
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState("");
+  const [askLoading, setAskLoading] = useState(false);
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -67,11 +71,32 @@ function App() {
 
       const data = await res.json();
       setFeedback(data.sections);
+      setResumeContext(file ? `File: ${file.name}` : text);  // save resume for follow-up questions
       setStatus(`Reviewed ${Object.keys(data.sections).length} sections.`);
     } catch (err) {
       setStatus("Could not connect to the backend. Make sure it is running on port 8000.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const askLLM = async () => {
+    if (!question.trim()) return;
+    setAskLoading(true);
+    setAnswer("");
+
+    const formData = new FormData();
+    formData.append("question", question);
+    formData.append("context", resumeContext);
+
+    try {
+      const res = await fetch("http://localhost:8000/ask", { method: "POST", body: formData });
+      const data = await res.json();
+      setAnswer(data.answer);
+    } catch {
+      setAnswer("Could not reach the backend.");
+    } finally {
+      setAskLoading(false);
     }
   };
 
@@ -160,6 +185,33 @@ function App() {
             <div>{renderFeedback(sectionText)}</div>
           </div>
         ))}
+
+        {/* suggestion box — only show after a review is done */}
+        {feedback && (
+          <div style={{ backgroundColor: "white", borderRadius: 10, padding: "1.5rem", marginTop: "1rem", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+            <h3 style={{ marginTop: 0, color: "#1a1a2e", fontSize: "1rem" }}>Ask a follow-up question</h3>
+            <textarea
+              value={question}
+              onChange={e => setQuestion(e.target.value)}
+              placeholder="e.g. How can I improve my experience section?"
+              rows={3}
+              style={{ width: "100%", padding: "0.75rem", fontSize: "0.9rem", border: "1px solid #ddd", borderRadius: 6, boxSizing: "border-box", resize: "vertical", marginBottom: "0.75rem" }}
+            />
+            <button
+              onClick={askLLM}
+              disabled={askLoading}
+              style={{ padding: "0.6rem 1.4rem", backgroundColor: askLoading ? "#7a9fcc" : "#2563eb", color: "white", border: "none", borderRadius: 6, fontWeight: 600, cursor: askLoading ? "not-allowed" : "pointer" }}
+            >
+              {askLoading ? "Thinking..." : "Ask"}
+            </button>
+
+            {answer && (
+              <div style={{ marginTop: "1rem", padding: "1rem", backgroundColor: "#f0f4ff", borderRadius: 6, borderLeft: "4px solid #2563eb" }}>
+                <div>{renderFeedback(answer)}</div>
+              </div>
+            )}
+          </div>
+        )}
 
       </div>
     </div>

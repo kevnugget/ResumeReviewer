@@ -2,7 +2,7 @@ from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from parser import extract_text
 from partitioner import partition
-from reviewer import review_sections
+from reviewer import review_sections, ask_question
 
 app = FastAPI()
 
@@ -39,3 +39,15 @@ async def review_resume(
         "sections": feedback,
         "overall": f"Reviewed {len(feedback)} sections."
     }
+
+
+@app.post("/ask")
+async def ask(
+    question: str = Form(...),
+    context: str = Form(default="")  # the resume text sent back from the frontend
+):
+    if not question.strip():
+        raise HTTPException(status_code=400, detail="Please enter a question.")
+
+    answer = ask_question(question, context)
+    return {"answer": answer}

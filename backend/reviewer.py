@@ -47,3 +47,20 @@ Feedback:"""
         feedback[section_name] = response.text.strip()
 
     return feedback
+
+
+def ask_question(question, resume_context):
+    today = date.today().strftime("%B %d, %Y")
+
+    prompt = f"""You are a resume advisor helping a college student.
+Today's date is {today}.
+
+The student's resume is below for context:
+{resume_context}
+
+The student asks: {question}
+
+Give a helpful, specific answer in 2-4 sentences."""
+
+    response = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
+    return response.text.strip()
