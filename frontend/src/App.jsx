@@ -4,37 +4,58 @@ function App() {
   const [file, setFile] = useState(null);
   const [text, setText] = useState("");
   const [status, setStatus] = useState("");
-  const [result, setResult] = useState("");
+  const [feedback, setFeedback] = useState(null);
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
     setFile(selectedFile);
+    setText("");
     setStatus("");
-    setResult("");
+    setFeedback(null);
   };
 
   const handleTextChange = (e) => {
     setText(e.target.value);
     setFile(null);
     setStatus("");
-    setResult("");
+    setFeedback(null);
   };
 
   const submitResume = async () => {
-    setStatus("Processing...");
-    setResult("");
-
     if (!file && !text.trim()) {
-      setStatus("Failed");
-      setResult("Please upload a file or paste resume text before submitting.");
+      setStatus("Please upload a file or paste resume text before submitting.");
       return;
     }
 
-    const uploadedSource = file ? `File: ${file.name}` : "Text input";
-    setResult(
-      `✅ Resume received from ${uploadedSource}.\n\n💡 Suggested optimization: Add a clear profile summary, use consistent bullet points, and ensure keyword alignment with job description. (This is a frontend demo value.)`
-    );
-    setStatus("Success");
+    setStatus("Reviewing your resume...");
+    setFeedback(null);
+
+    // build a form payload since the backend expects multipart/form-data
+    const formData = new FormData();
+    if (file) {
+      formData.append("file", file);
+    } else {
+      formData.append("text", text);
+    }
+
+    try {
+      const res = await fetch("http://localhost:8000/review", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        setStatus(`Error: ${err.detail}`);
+        return;
+      }
+
+      const data = await res.json();
+      setFeedback(data.sections);  // sections is a dict of section -> feedback string
+      setStatus(`Done! Reviewed ${Object.keys(data.sections).length} sections.`);
+    } catch (err) {
+      setStatus("Could not connect to the backend. Make sure it is running on port 8000.");
+    }
   };
 
   return (
@@ -80,10 +101,15 @@ function App() {
 
       <section style={{ marginTop: "1.5rem" }}>
         <h2>Status</h2>
-        <div style={{ padding: "0.8rem", backgroundColor: "#f9f9f9", borderRadius: 5, border: "1px solid #ddd" }}>
-          <p><strong>{status || "Ready"}</strong></p>
-          <pre style={{ whiteSpace: "pre-wrap", margin: 0 }}>{result || "No output yet."}</pre>
-        </div>
+        <p><strong>{status || "Ready"}</strong></p>
+
+        {/* render each section's feedback as its own card */}
+        {feedback && Object.entries(feedback).map(([section, text]) => (
+          <div key={section} style={{ marginBottom: "1rem", padding: "1rem", border: "1px solid #ddd", borderRadius: 6, backgroundColor: "#f9f9f9" }}>
+            <h3 style={{ textTransform: "capitalize", marginTop: 0 }}>{section}</h3>
+            <pre style={{ whiteSpace: "pre-wrap", margin: 0 }}>{text}</pre>
+          </div>
+        ))}
       </section>
     </div>
   );
