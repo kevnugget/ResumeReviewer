@@ -1,5 +1,18 @@
 import { useState } from "react";
 
+// converts **text** to <strong> and renders each line with spacing
+function renderFeedback(text) {
+  return text.split("\n").filter(line => line.trim()).map((line, i) => {
+    const cleaned = line.replace(/^[\*\-]\s+/, "• ");  // replace * or - bullets with a real bullet
+    const parts = cleaned.split(/\*\*(.*?)\*\*/g);
+    return (
+      <p key={i} style={{ margin: "0 0 0.6rem 0", lineHeight: "1.6", fontSize: "0.9rem" }}>
+        {parts.map((part, j) => j % 2 === 1 ? <strong key={j}>{part}</strong> : part)}
+      </p>
+    );
+  });
+}
+
 function App() {
   const [file, setFile] = useState(null);
   const [text, setText] = useState("");
@@ -107,7 +120,7 @@ function App() {
         {feedback && Object.entries(feedback).map(([section, text]) => (
           <div key={section} style={{ marginBottom: "1rem", padding: "1rem", border: "1px solid #ddd", borderRadius: 6, backgroundColor: "#f9f9f9" }}>
             <h3 style={{ textTransform: "capitalize", marginTop: 0 }}>{section}</h3>
-            <pre style={{ whiteSpace: "pre-wrap", margin: 0 }}>{text}</pre>
+            <div>{renderFeedback(text)}</div>
           </div>
         ))}
       </section>

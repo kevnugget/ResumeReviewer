@@ -1,12 +1,12 @@
 import os
-import google.generativeai as genai
+from datetime import date
+from google import genai
 from dotenv import load_dotenv
 from rag import retrieve
 
 load_dotenv()  # load GEMINI_API_KEY from .env
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel("gemini-1.5-flash")
+client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 
 
 def review_sections(sections):
@@ -27,7 +27,10 @@ def review_sections(sections):
         tips = retrieve(section_name, section_text)  # get relevant best-practice tips from RAG
         tips_text = "\n".join(f"- {t}" for t in tips)
 
+        today = date.today().strftime("%B %d, %Y")  # e.g. April 19, 2026
+
         prompt = f"""You are a resume reviewer helping a college student improve their resume.
+Today's date is {today}. Use this to correctly judge whether dates on the resume are past, current, or future.
 
 Review the following '{section_name}' section and give specific, actionable feedback.
 Keep your response to 3-5 bullet points. Be direct and constructive.
@@ -40,7 +43,7 @@ Resume section:
 
 Feedback:"""
 
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
         feedback[section_name] = response.text.strip()
 
     return feedback
