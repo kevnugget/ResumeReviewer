@@ -52,12 +52,13 @@ async def ask(
     question: str = Form(...),
     context: str = Form(default=""),
     profile: str = Form(default=""),
+    history: str = Form(default=""),
 ):
     if not question.strip():
         raise HTTPException(status_code=400, detail="Please enter a question.")
 
     try:
-        answer = ask_question(question, context, profile)
+        answer = ask_question(question, context, profile, history)
     except RuntimeError as e:
         raise HTTPException(status_code=429, detail=str(e))
     return {"answer": answer}

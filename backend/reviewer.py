@@ -113,10 +113,23 @@ Feedback:"""
     return feedback
 
 
-def ask_question(question, resume_context, profile_json=""):
+def ask_question(question, resume_context, profile_json="", history_json=""):
     today = date.today().strftime("%B %d, %Y")
     profile_text = _format_profile(profile_json)
     profile_block = f"\nAbout the candidate:\n{profile_text}\n" if profile_text else ""
+
+    history_block = ""
+    if history_json:
+        try:
+            history = json.loads(history_json)
+            if history:
+                turns = "\n\n".join(
+                    f"Student: {t['question']}\nAdvisor: {t['answer']}"
+                    for t in history
+                )
+                history_block = f"\nPrevious conversation:\n{turns}\n"
+        except (json.JSONDecodeError, TypeError, KeyError):
+            pass
 
     prompt = f"""You are a resume advisor helping a college student. You only answer questions about resumes, career advice, job applications, and professional development.
 Today's date is {today}.
@@ -126,7 +139,7 @@ If the question is not related to resumes, careers, or job applications, respond
 
 The student's resume is below for context:
 {resume_context}
-
+{history_block}
 The student asks: {question}
 
 Give a helpful, specific answer in 2-4 sentences."""

@@ -32,8 +32,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [resumeContext, setResumeContext] = useState("");
   const [question, setQuestion] = useState("");
-  const [answer, setAnswer] = useState("");
-  const [answerIsWarning, setAnswerIsWarning] = useState(false);
+  const [chatHistory, setChatHistory] = useState([]);
   const [askLoading, setAskLoading] = useState(false);
 
   useEffect(() => {
@@ -66,6 +65,7 @@ function App() {
     setLoading(true);
     setStatus("Reviewing your resume...");
     setFeedback(null);
+    setChatHistory([]);
 
     // build a form payload since the backend expects multipart/form-data
     const formData = new FormData();
@@ -101,23 +101,23 @@ function App() {
 
   const askLLM = async () => {
     if (!question.trim()) return;
+    const currentQuestion = question;
     setAskLoading(true);
-    setAnswer("");
-    setAnswerIsWarning(false);
+    setQuestion("");
 
     const formData = new FormData();
-    formData.append("question", question);
+    formData.append("question", currentQuestion);
     formData.append("context", resumeContext);
     formData.append("profile", JSON.stringify(profile));
+    formData.append("history", JSON.stringify(chatHistory.map(t => ({ question: t.question, answer: t.answer }))));
 
     try {
       const res = await fetch("http://localhost:8000/ask", { method: "POST", body: formData });
       const data = await res.json();
-      const isOffTopic = data.answer?.toLowerCase().includes("please ask a question related to your resume");
-      setAnswerIsWarning(isOffTopic);
-      setAnswer(data.answer);
+      const isWarning = data.answer?.toLowerCase().includes("please ask a question related to your resume");
+      setChatHistory(prev => [...prev, { question: currentQuestion, answer: data.answer, isWarning }]);
     } catch {
-      setAnswer("Could not reach the backend.");
+      setChatHistory(prev => [...prev, { question: currentQuestion, answer: "Could not reach the backend.", isWarning: true }]);
     } finally {
       setAskLoading(false);
     }
@@ -292,34 +292,69 @@ function App() {
           </div>
         ))}
 
-        {/* suggestion box — only show after a review is done */}
+        {/* follow-up chat panel — only show after a review is done */}
         {feedback && (
           <div style={{ backgroundColor: "white", borderRadius: 10, padding: "1.5rem", marginTop: "1rem", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
-            <h3 style={{ marginTop: 0, color: "#1a1a2e", fontSize: "1rem" }}>Ask a follow-up question</h3>
+            <h3 style={{ marginTop: 0, color: "#1a1a2e", fontSize: "1rem" }}>
+              Ask a follow-up question
+            </h3>
+
+            {/* chat thread */}
+            {chatHistory.length > 0 && (
+              <div style={{ marginBottom: "1.25rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                {chatHistory.map((turn, i) => (
+                  <div key={i}>
+                    {/* user bubble */}
+                    <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "0.4rem" }}>
+                      <div style={{
+                        maxWidth: "75%", backgroundColor: "#2563eb", color: "white",
+                        padding: "0.65rem 1rem", borderRadius: "12px 12px 2px 12px", fontSize: "0.88rem", lineHeight: 1.5,
+                      }}>
+                        {turn.question}
+                      </div>
+                    </div>
+                    {/* advisor bubble */}
+                    <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                      <div style={{
+                        maxWidth: "85%",
+                        backgroundColor: turn.isWarning ? "#fff8e1" : "#f0f4ff",
+                        borderLeft: `4px solid ${turn.isWarning ? "#f59e0b" : "#2563eb"}`,
+                        padding: "0.65rem 1rem", borderRadius: "2px 12px 12px 12px", fontSize: "0.88rem",
+                      }}>
+                        {renderFeedback(turn.answer)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {askLoading && (
+                  <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                    <div style={{
+                      backgroundColor: "#f0f4ff", borderLeft: "4px solid #2563eb",
+                      padding: "0.65rem 1rem", borderRadius: "2px 12px 12px 12px", fontSize: "0.88rem", color: "#888",
+                    }}>
+                      Thinking...
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* input row */}
             <textarea
               value={question}
               onChange={e => setQuestion(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); askLLM(); } }}
               placeholder="e.g. How can I improve my experience section?"
               rows={3}
               style={{ width: "100%", padding: "0.75rem", fontSize: "0.9rem", border: "1px solid #ddd", borderRadius: 6, boxSizing: "border-box", resize: "vertical", marginBottom: "0.75rem" }}
             />
             <button
               onClick={askLLM}
-              disabled={askLoading}
-              style={{ padding: "0.6rem 1.4rem", backgroundColor: askLoading ? "#7a9fcc" : "#2563eb", color: "white", border: "none", borderRadius: 6, fontWeight: 600, cursor: askLoading ? "not-allowed" : "pointer" }}
+              disabled={askLoading || !question.trim()}
+              style={{ padding: "0.6rem 1.4rem", backgroundColor: (askLoading || !question.trim()) ? "#7a9fcc" : "#2563eb", color: "white", border: "none", borderRadius: 6, fontWeight: 600, cursor: (askLoading || !question.trim()) ? "not-allowed" : "pointer" }}
             >
               {askLoading ? "Thinking..." : "Ask"}
             </button>
-
-            {answer && (
-              <div style={{
-                marginTop: "1rem", padding: "1rem", borderRadius: 6,
-                backgroundColor: answerIsWarning ? "#fff8e1" : "#f0f4ff",
-                borderLeft: `4px solid ${answerIsWarning ? "#f59e0b" : "#2563eb"}`,
-              }}>
-                <div>{renderFeedback(answer)}</div>
-              </div>
-            )}
           </div>
         )}
 
