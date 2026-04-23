@@ -1,88 +1,164 @@
 # AI Resume Reviewer
 
-A fullstack web app that lets users upload a resume and receive section-by-section AI feedback powered by Google Gemini and a RAG pipeline.
+**Domain:** Artificial Intelligence / Natural Language Processing / Career Tools
 
-## Features
+**Team Members:**
+- Kevin Nguyen
 
-- Upload a resume as PDF, DOCX, or TXT — or paste the text directly
-- Automatically partitions the resume into sections (Experience, Education, Skills, Projects, etc.)
-- Retrieves relevant best-practice tips per section using TF-IDF RAG
-- Sends each section + retrieved tips to Gemini for targeted, actionable feedback
-- Flags summary sections and recommends removing them
-- Follow-up question box so users can ask the LLM anything about their resume
+---
 
-## Tech Stack
+## Overview
 
-| Layer | Tech |
-|---|---|
-| Frontend | React, Vite |
-| Backend | FastAPI, Python |
-| LLM | Google Gemini (gemini-2.5-flash) |
-| RAG | scikit-learn TF-IDF + cosine similarity |
-| PDF parsing | PyMuPDF |
-| DOCX parsing | python-docx |
+AI Resume Reviewer is a full-stack web application that analyzes a student's resume section by section using a Retrieval-Augmented Generation (RAG) pipeline backed by Google Gemini. Users upload or paste their resume, optionally fill in a persistent profile (career stage, target role, goals), and receive specific, actionable feedback per section. A follow-up Q&A panel lets users ask career questions grounded in their resume.
 
-## Project Structure
+---
+
+## Architecture
+
+### Data Flow
+
+```
+User (Browser)
+  │
+  │  1. Fill profile (saved to localStorage — persists across sessions)
+  │  2. Upload file (.pdf / .docx / .txt) or paste resume text
+  │  3. POST /review  (multipart/form-data: file|text + profile JSON)
+  ▼
+FastAPI Backend  (port 8000)
+  │
+  ├── parser.py
+  │     PyMuPDF   → extracts text from PDF
+  │     python-docx → extracts text from DOCX
+  │     UTF-8 decode → plain TXT
+  │
+  ├── partitioner.py
+  │     Regex splits plain text into labeled sections:
+  │     experience · education · skills · projects · certifications · other
+  │
+  ├── rag.py  (runs once per section)
+  │     TF-IDF vectorizer (scikit-learn) encodes the section text
+  │     Cosine similarity retrieves top-3 relevant tips from a
+  │     hardcoded knowledge base (~20 best-practice tips per section)
+  │
+  ├── reviewer.py  (runs once per section)
+  │     Builds prompt:  profile context + RAG tips + section text
+  │     Calls Gemini API (gemini-2.5-flash → fallback gemini-2.0-flash)
+  │     Exponential backoff retry on 503 / high-demand errors
+  │     Returns 3-5 bullet-point feedback string per section
+  │
+  └── JSON response  →  { sections: { experience: "...", education: "...", ... } }
+        │
+        ▼
+React Frontend  (port 5173)
+  Renders one feedback card per section
+  Follow-up Q&A: POST /ask  (question + full resume text + profile)
+```
+
+### File Map
 
 ```
 ResumeReviewer/
 ├── backend/
-│   ├── app.py          # FastAPI routes
-│   ├── parser.py       # PDF/DOCX/TXT text extraction
-│   ├── partitioner.py  # splits resume into sections
-│   ├── rag.py          # TF-IDF retrieval of best-practice tips
-│   ├── reviewer.py     # Gemini API calls
-│   ├── .env            # API key (not committed)
-│   └── requirements.txt
+│   ├── app.py            # FastAPI routes (/review, /ask)
+│   ├── parser.py         # File-to-text extraction (PDF, DOCX, TXT)
+│   ├── partitioner.py    # Section detection via regex header matching
+│   ├── reviewer.py       # LLM prompting, retry/fallback, input guardrails
+│   ├── rag.py            # TF-IDF knowledge base and retrieval
+│   ├── requirements.txt
+│   └── .env              # ← NOT committed (see setup below)
 └── frontend/
     ├── src/
-    │   ├── App.jsx     # main UI
-    │   └── index.css
+    │   ├── App.jsx        # Full UI: profile card, upload, feedback, Q&A
+    │   └── main.jsx
     └── package.json
 ```
 
-## Setup
+---
+
+## Setup Instructions
 
 ### Prerequisites
+
 - Python 3.10+
 - Node.js 18+
-- A Google Gemini API key from [aistudio.google.com](https://aistudio.google.com)
+- A Google AI Studio API key — get one free at [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)
 
-### Backend
+---
 
-```powershell
-cd backend
+### 1. Backend
+
+```bash
+cd ResumeReviewer/backend
+```
+
+**Create and activate a virtual environment:**
+
+```bash
+# Windows
 python -m venv venv
-venv/Scripts/activate
+venv\Scripts\activate
+
+# macOS / Linux
+python -m venv venv
+source venv/bin/activate
+```
+
+**Install dependencies:**
+
+```bash
 pip install -r requirements.txt
 ```
 
-Create `backend/.env`:
+**Create the `.env` file** (never commit this file):
+
 ```
-GOOGLE_API_KEY=your_key_here
+# ResumeReviewer/backend/.env
+GOOGLE_API_KEY=your_google_api_key_here
 ```
 
-Start the server:
-```powershell
+**Start the server:**
+
+```bash
 uvicorn app:app --reload
 ```
 
-Backend runs at `http://localhost:8000`.
+API is available at `http://localhost:8000`.
 
-### Frontend
+---
 
-```powershell
-cd frontend
+### 2. Frontend
+
+Open a second terminal:
+
+```bash
+cd ResumeReviewer/frontend
 npm install
 npm run dev
 ```
 
-Frontend runs at `http://localhost:5173`.
+App is available at `http://localhost:5173`.
 
-## Usage
+---
 
-1. Open `http://localhost:5173`
-2. Upload a resume file or paste resume text
-3. Click **Review My Resume**
-4. Read the per-section feedback
-5. Use the follow-up question box to ask anything about your resume
+## Environment Variables
+
+| Variable | File | Purpose |
+|---|---|---|
+| `GOOGLE_API_KEY` | `backend/.env` | Authenticates requests to the Google Gemini API |
+
+**Security rules:**
+- `.env` files must **never** be committed to the repository.
+- Ensure `backend/.env` is listed in `.gitignore`.
+- Never hard-code API keys in source files.
+
+---
+
+## Key Design Decisions
+
+| Decision | Reason |
+|---|---|
+| TF-IDF RAG (no vector DB) | Self-contained with zero infrastructure; the knowledge base is small enough that in-memory similarity search is instant |
+| Gemini 2.5 Flash + 2.0 Flash fallback | Balances quality and cost; automatic fallback handles API demand spikes (503 errors) |
+| Profile stored in localStorage | No backend database or login required; data persists across sessions automatically |
+| Guardrails inside the LLM prompt | Enforcing topic scope in the system instruction is simpler and more robust than keyword blocklists |
+| Resume validation via keyword heuristic | Catches obviously wrong input (random text) without an extra API call |
