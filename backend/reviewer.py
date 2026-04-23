@@ -7,11 +7,11 @@ from google.genai import errors as genai_errors
 from dotenv import load_dotenv
 from rag import retrieve
 
-load_dotenv()  # load GEMINI_API_KEY from .env
+load_dotenv(override=True)
 
 client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 
-_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"]
+_MODELS = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-2.5-flash"]
 
 _RESUME_KEYWORDS = {
     "experience", "education", "skills", "work", "employment",
@@ -45,16 +45,29 @@ def is_valid_resume(text):
 
 
 def _generate_with_retry(prompt):
-    """Try each model in order; retry once with backoff on 503."""
+    """Try each model in order; retry with backoff on 503, skip to next model on 429."""
+    rate_limited = 0
     for model in _MODELS:
         for attempt in range(3):
             try:
                 return client.models.generate_content(model=model, contents=prompt)
+            except genai_errors.ClientError as e:
+                if e.code in (429, 404):
+                    if e.code == 429:
+                        rate_limited += 1
+                    print(f"[reviewer] {model} unavailable ({e.code}), trying next model...")
+                    break  # skip to next model
+                raise  # other 4xx errors are caller bugs, propagate immediately
             except genai_errors.ServerError as e:
                 if e.code == 503 and attempt < 2:
                     time.sleep(2 ** attempt)
                     continue
                 break  # non-503 or exhausted retries — try next model
+    if rate_limited == len(_MODELS):
+        raise RuntimeError(
+            "Daily quota exceeded for all available Gemini models. "
+            "Please try again tomorrow or upgrade your Google AI plan."
+        )
     raise RuntimeError("All Gemini models unavailable. Please try again later.")
 
 

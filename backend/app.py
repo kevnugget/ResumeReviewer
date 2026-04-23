@@ -36,7 +36,10 @@ async def review_resume(
         resume_text = text
 
     sections = partition(resume_text)  # split resume into labeled sections
-    feedback = review_sections(sections, profile)  # get LLM feedback per section using RAG context
+    try:
+        feedback = review_sections(sections, profile)  # get LLM feedback per section using RAG context
+    except RuntimeError as e:
+        raise HTTPException(status_code=429, detail=str(e))
 
     return {
         "sections": feedback,
@@ -53,5 +56,8 @@ async def ask(
     if not question.strip():
         raise HTTPException(status_code=400, detail="Please enter a question.")
 
-    answer = ask_question(question, context, profile)
+    try:
+        answer = ask_question(question, context, profile)
+    except RuntimeError as e:
+        raise HTTPException(status_code=429, detail=str(e))
     return {"answer": answer}

@@ -1,10 +1,5 @@
 # AI Resume Reviewer
 
-**Domain:** Artificial Intelligence / Natural Language Processing / Career Tools
-
-**Team Members:**
-- Kevin Nguyen
-
 ---
 
 ## Overview
