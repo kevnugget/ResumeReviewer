@@ -12,6 +12,21 @@ client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 
 _MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"]
 
+_RESUME_KEYWORDS = {
+    "experience", "education", "skills", "work", "employment",
+    "university", "college", "degree", "gpa", "internship",
+    "projects", "certifications", "objective", "summary", "linkedin",
+    "github", "responsibilities", "achievements", "qualifications",
+    "position", "company", "bachelor", "master", "phd", "resume", "cv",
+}
+
+def is_valid_resume(text):
+    if len(text.strip()) < 100:
+        return False
+    lower = text.lower()
+    matches = sum(1 for kw in _RESUME_KEYWORDS if kw in lower)
+    return matches >= 3
+
 
 def _generate_with_retry(prompt):
     """Try each model in order; retry once with backoff on 503."""
@@ -70,8 +85,11 @@ Feedback:"""
 def ask_question(question, resume_context):
     today = date.today().strftime("%B %d, %Y")
 
-    prompt = f"""You are a resume advisor helping a college student.
+    prompt = f"""You are a resume advisor helping a college student. You only answer questions about resumes, career advice, job applications, and professional development.
 Today's date is {today}.
+
+If the question is not related to resumes, careers, or job applications, respond with exactly:
+"Please ask a question related to your resume."
 
 The student's resume is below for context:
 {resume_context}

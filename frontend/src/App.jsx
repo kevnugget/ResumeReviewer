@@ -22,6 +22,7 @@ function App() {
   const [resumeContext, setResumeContext] = useState("");
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
+  const [answerIsWarning, setAnswerIsWarning] = useState(false);
   const [askLoading, setAskLoading] = useState(false);
 
   const handleFileChange = (e) => {
@@ -84,6 +85,7 @@ function App() {
     if (!question.trim()) return;
     setAskLoading(true);
     setAnswer("");
+    setAnswerIsWarning(false);
 
     const formData = new FormData();
     formData.append("question", question);
@@ -92,6 +94,8 @@ function App() {
     try {
       const res = await fetch("http://localhost:8000/ask", { method: "POST", body: formData });
       const data = await res.json();
+      const isOffTopic = data.answer?.toLowerCase().includes("please ask a question related to your resume");
+      setAnswerIsWarning(isOffTopic);
       setAnswer(data.answer);
     } catch {
       setAnswer("Could not reach the backend.");
@@ -206,7 +210,11 @@ function App() {
             </button>
 
             {answer && (
-              <div style={{ marginTop: "1rem", padding: "1rem", backgroundColor: "#f0f4ff", borderRadius: 6, borderLeft: "4px solid #2563eb" }}>
+              <div style={{
+                marginTop: "1rem", padding: "1rem", borderRadius: 6,
+                backgroundColor: answerIsWarning ? "#fff8e1" : "#f0f4ff",
+                borderLeft: `4px solid ${answerIsWarning ? "#f59e0b" : "#2563eb"}`,
+              }}>
                 <div>{renderFeedback(answer)}</div>
               </div>
             )}

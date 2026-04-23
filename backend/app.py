@@ -2,7 +2,7 @@ from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from parser import extract_text
 from partitioner import partition
-from reviewer import review_sections, ask_question
+from reviewer import review_sections, ask_question, is_valid_resume
 
 app = FastAPI()
 
@@ -27,10 +27,12 @@ async def review_resume(
         raise HTTPException(status_code=400, detail="Please provide a file or resume text.")
 
     if file:
-        raw_bytes = await file.read() 
+        raw_bytes = await file.read()
         resume_text = extract_text(raw_bytes, file.filename)  # convert to plain text based on file type
     else:
-        resume_text = text  # user pasted text directly, use it as-is
+        if not is_valid_resume(text):
+            raise HTTPException(status_code=422, detail="That doesn't look like a resume. Please paste your actual resume content.")
+        resume_text = text
 
     sections = partition(resume_text)  # split resume into labeled sections
     feedback = review_sections(sections)  # get LLM feedback per section using RAG context
