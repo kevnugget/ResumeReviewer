@@ -1,12 +1,30 @@
 import os
+import time
 from datetime import date
 from google import genai
+from google.genai import errors as genai_errors
 from dotenv import load_dotenv
 from rag import retrieve
 
 load_dotenv()  # load GEMINI_API_KEY from .env
 
 client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+
+_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"]
+
+
+def _generate_with_retry(prompt):
+    """Try each model in order; retry once with backoff on 503."""
+    for model in _MODELS:
+        for attempt in range(3):
+            try:
+                return client.models.generate_content(model=model, contents=prompt)
+            except genai_errors.ServerError as e:
+                if e.code == 503 and attempt < 2:
+                    time.sleep(2 ** attempt)
+                    continue
+                break  # non-503 or exhausted retries — try next model
+    raise RuntimeError("All Gemini models unavailable. Please try again later.")
 
 
 def review_sections(sections):
@@ -43,7 +61,7 @@ Resume section:
 
 Feedback:"""
 
-        response = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
+        response = _generate_with_retry(prompt)
         feedback[section_name] = response.text.strip()
 
     return feedback
@@ -62,5 +80,5 @@ The student asks: {question}
 
 Give a helpful, specific answer in 2-4 sentences."""
 
-    response = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
+    response = _generate_with_retry(prompt)
     return response.text.strip()
