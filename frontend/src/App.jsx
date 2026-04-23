@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 // converts **text** to <strong> and renders each line with spacing
 function renderFeedback(text) {
@@ -13,7 +13,18 @@ function renderFeedback(text) {
   });
 }
 
+const PROFILE_KEY = "resumeReviewerProfile";
+const EMPTY_PROFILE = { careerStage: "", targetRole: "", targetIndustry: "", goals: "" };
+
 function App() {
+  const [profile, setProfile] = useState(() => {
+    try {
+      const saved = localStorage.getItem(PROFILE_KEY);
+      return saved ? { ...EMPTY_PROFILE, ...JSON.parse(saved) } : EMPTY_PROFILE;
+    } catch { return EMPTY_PROFILE; }
+  });
+  const [profileOpen, setProfileOpen] = useState(false);
+
   const [file, setFile] = useState(null);
   const [text, setText] = useState("");
   const [status, setStatus] = useState("");
@@ -24,6 +35,12 @@ function App() {
   const [answer, setAnswer] = useState("");
   const [answerIsWarning, setAnswerIsWarning] = useState(false);
   const [askLoading, setAskLoading] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+  }, [profile]);
+
+  const updateProfile = (field, value) => setProfile(prev => ({ ...prev, [field]: value }));
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -57,6 +74,7 @@ function App() {
     } else {
       formData.append("text", text);
     }
+    formData.append("profile", JSON.stringify(profile));
 
     try {
       const res = await fetch("http://localhost:8000/review", {
@@ -90,6 +108,7 @@ function App() {
     const formData = new FormData();
     formData.append("question", question);
     formData.append("context", resumeContext);
+    formData.append("profile", JSON.stringify(profile));
 
     try {
       const res = await fetch("http://localhost:8000/ask", { method: "POST", body: formData });
@@ -116,6 +135,89 @@ function App() {
       </div>
 
       <div style={{ maxWidth: 780, margin: "2rem auto", padding: "0 1rem" }}>
+
+        {/* profile card */}
+        <div style={{ backgroundColor: "white", borderRadius: 10, marginBottom: "1.5rem", boxShadow: "0 2px 8px rgba(0,0,0,0.08)", overflow: "hidden" }}>
+          <button
+            onClick={() => setProfileOpen(o => !o)}
+            style={{ width: "100%", padding: "1rem 1.5rem", background: "none", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}
+          >
+            <span style={{ fontWeight: 700, fontSize: "1rem", color: "#1a1a2e" }}>Your Profile</span>
+            <span style={{ color: "#2563eb", fontSize: "0.85rem", fontWeight: 600 }}>
+              {profileOpen ? "▲ Collapse" : "▼ Edit"}
+            </span>
+          </button>
+
+          {!profileOpen && (
+            <div style={{ padding: "0 1.5rem 0.9rem", display: "flex", flexWrap: "wrap", gap: "0.5rem 1.5rem" }}>
+              {profile.careerStage && <span style={{ fontSize: "0.82rem", color: "#555" }}>📋 {profile.careerStage}</span>}
+              {profile.targetRole && <span style={{ fontSize: "0.82rem", color: "#555" }}>🎯 {profile.targetRole}</span>}
+              {profile.targetIndustry && <span style={{ fontSize: "0.82rem", color: "#555" }}>🏢 {profile.targetIndustry}</span>}
+              {profile.goals && <span style={{ fontSize: "0.82rem", color: "#555" }}>💡 {profile.goals}</span>}
+              {!profile.careerStage && !profile.targetRole && !profile.targetIndustry && !profile.goals && (
+                <span style={{ fontSize: "0.82rem", color: "#aaa", fontStyle: "italic" }}>No profile set — click Edit to personalize your feedback.</span>
+              )}
+            </div>
+          )}
+
+          {profileOpen && (
+            <div style={{ padding: "0 1.5rem 1.5rem", display: "grid", gap: "1rem", gridTemplateColumns: "1fr 1fr" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "#444", marginBottom: "0.3rem" }}>Career Stage</label>
+                <select
+                  value={profile.careerStage}
+                  onChange={e => updateProfile("careerStage", e.target.value)}
+                  style={{ width: "100%", padding: "0.55rem 0.75rem", fontSize: "0.88rem", border: "1px solid #ddd", borderRadius: 6, backgroundColor: "white" }}
+                >
+                  <option value="">— Select —</option>
+                  <option>High School Student</option>
+                  <option>College Student</option>
+                  <option>Recent Graduate</option>
+                  <option>Early Career (1–3 yrs)</option>
+                  <option>Mid Career (4–9 yrs)</option>
+                  <option>Career Changer</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "#444", marginBottom: "0.3rem" }}>Target Role</label>
+                <input
+                  type="text"
+                  value={profile.targetRole}
+                  onChange={e => updateProfile("targetRole", e.target.value)}
+                  placeholder="e.g. Software Engineer Intern"
+                  style={{ width: "100%", padding: "0.55rem 0.75rem", fontSize: "0.88rem", border: "1px solid #ddd", borderRadius: 6, boxSizing: "border-box" }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "#444", marginBottom: "0.3rem" }}>Target Industry</label>
+                <input
+                  type="text"
+                  value={profile.targetIndustry}
+                  onChange={e => updateProfile("targetIndustry", e.target.value)}
+                  placeholder="e.g. Technology, Finance"
+                  style={{ width: "100%", padding: "0.55rem 0.75rem", fontSize: "0.88rem", border: "1px solid #ddd", borderRadius: 6, boxSizing: "border-box" }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "#444", marginBottom: "0.3rem" }}>Career Goals</label>
+                <input
+                  type="text"
+                  value={profile.goals}
+                  onChange={e => updateProfile("goals", e.target.value)}
+                  placeholder="e.g. Land a summer 2026 ML internship"
+                  style={{ width: "100%", padding: "0.55rem 0.75rem", fontSize: "0.88rem", border: "1px solid #ddd", borderRadius: 6, boxSizing: "border-box" }}
+                />
+              </div>
+
+              <p style={{ gridColumn: "1 / -1", margin: 0, fontSize: "0.78rem", color: "#aaa" }}>
+                ✓ Auto-saved to your browser — no account needed.
+              </p>
+            </div>
+          )}
+        </div>
 
         {/* upload card */}
         <div style={{ backgroundColor: "white", borderRadius: 10, padding: "1.5rem", marginBottom: "1.5rem", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>

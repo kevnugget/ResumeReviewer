@@ -21,7 +21,8 @@ def home():
 @app.post("/review")
 async def review_resume(
     file: UploadFile = File(default=None),
-    text: str = Form(default="")
+    text: str = Form(default=""),
+    profile: str = Form(default=""),
 ):
     if not file and not text.strip():
         raise HTTPException(status_code=400, detail="Please provide a file or resume text.")
@@ -35,7 +36,7 @@ async def review_resume(
         resume_text = text
 
     sections = partition(resume_text)  # split resume into labeled sections
-    feedback = review_sections(sections)  # get LLM feedback per section using RAG context
+    feedback = review_sections(sections, profile)  # get LLM feedback per section using RAG context
 
     return {
         "sections": feedback,
@@ -46,10 +47,11 @@ async def review_resume(
 @app.post("/ask")
 async def ask(
     question: str = Form(...),
-    context: str = Form(default="")  # the resume text sent back from the frontend
+    context: str = Form(default=""),
+    profile: str = Form(default=""),
 ):
     if not question.strip():
         raise HTTPException(status_code=400, detail="Please enter a question.")
 
-    answer = ask_question(question, context)
+    answer = ask_question(question, context, profile)
     return {"answer": answer}

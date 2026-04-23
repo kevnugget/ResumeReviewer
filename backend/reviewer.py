@@ -1,4 +1,5 @@
 import os
+import json
 import time
 from datetime import date
 from google import genai
@@ -19,6 +20,21 @@ _RESUME_KEYWORDS = {
     "github", "responsibilities", "achievements", "qualifications",
     "position", "company", "bachelor", "master", "phd", "resume", "cv",
 }
+
+def _format_profile(profile_json):
+    if not profile_json:
+        return ""
+    try:
+        p = json.loads(profile_json)
+        parts = []
+        if p.get("careerStage"):   parts.append(f"Career stage: {p['careerStage']}")
+        if p.get("targetRole"):    parts.append(f"Target role: {p['targetRole']}")
+        if p.get("targetIndustry"):parts.append(f"Target industry: {p['targetIndustry']}")
+        if p.get("goals"):         parts.append(f"Career goals: {p['goals']}")
+        return "\n".join(parts)
+    except (json.JSONDecodeError, TypeError):
+        return ""
+
 
 def is_valid_resume(text):
     if len(text.strip()) < 100:
@@ -42,8 +58,10 @@ def _generate_with_retry(prompt):
     raise RuntimeError("All Gemini models unavailable. Please try again later.")
 
 
-def review_sections(sections):
+def review_sections(sections, profile_json=""):
     feedback = {}
+    profile_text = _format_profile(profile_json)
+    profile_block = f"\nAbout the candidate:\n{profile_text}\n" if profile_text else ""
 
     for section_name, section_text in sections.items():
         if not section_text.strip():
@@ -64,8 +82,8 @@ def review_sections(sections):
 
         prompt = f"""You are a resume reviewer helping a college student improve their resume.
 Today's date is {today}. Use this to correctly judge whether dates on the resume are past, current, or future.
-
-Review the following '{section_name}' section and give specific, actionable feedback.
+{profile_block}
+Review the following '{section_name}' section and give specific, actionable feedback tailored to the candidate's background and goals above.
 Keep your response to 3-5 bullet points. Be direct and constructive.
 
 Relevant best practices to consider:
@@ -82,12 +100,14 @@ Feedback:"""
     return feedback
 
 
-def ask_question(question, resume_context):
+def ask_question(question, resume_context, profile_json=""):
     today = date.today().strftime("%B %d, %Y")
+    profile_text = _format_profile(profile_json)
+    profile_block = f"\nAbout the candidate:\n{profile_text}\n" if profile_text else ""
 
     prompt = f"""You are a resume advisor helping a college student. You only answer questions about resumes, career advice, job applications, and professional development.
 Today's date is {today}.
-
+{profile_block}
 If the question is not related to resumes, careers, or job applications, respond with exactly:
 "Please ask a question related to your resume."
 
