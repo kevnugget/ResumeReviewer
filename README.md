@@ -1,12 +1,5 @@
 # AI Resume Reviewer
 
-**Domain:** Artificial Intelligence / Natural Language Processing / Career Tools
-
-**Team Members:**
-- Kevin Nguyen
-
----
-
 ## Overview
 
 AI Resume Reviewer is a full-stack web application that analyzes a student's resume section by section using a Retrieval-Augmented Generation (RAG) pipeline backed by Google Gemini. Users upload or paste their resume, optionally fill in a persistent profile (career stage, target role, goals), and receive specific, actionable feedback per section. A follow-up Q&A panel lets users ask career questions grounded in their resume.
