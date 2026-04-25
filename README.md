@@ -32,8 +32,8 @@ FastAPI Backend  (port 8000)
   │
   ├── rag.py  (runs once per section)
   │     TF-IDF vectorizer (scikit-learn) encodes the section text
-  │     Cosine similarity retrieves top-3 relevant tips from a
-  │     hardcoded knowledge base (~20 best-practice tips per section)
+  │     Cosine similarity retrieves top-3 relevant tips from
+  │     data/knowledge_base.json (~20 best-practice tips per section)
   │
   ├── reviewer.py  (runs once per section)
   │     Builds prompt:  profile context + RAG tips + section text
@@ -58,7 +58,12 @@ ResumeReviewer/
 │   ├── parser.py         # File-to-text extraction (PDF, DOCX, TXT)
 │   ├── partitioner.py    # Section detection via regex header matching
 │   ├── reviewer.py       # LLM prompting, retry/fallback, input guardrails
-│   ├── rag.py            # TF-IDF knowledge base and retrieval
+│   ├── rag.py            # TF-IDF retrieval engine
+│   ├── prompts/
+│   │   ├── review_section.txt   # System + user prompt template for section review
+│   │   └── ask_question.txt     # Prompt template for follow-up Q&A
+│   ├── data/
+│   │   └── knowledge_base.json  # RAG knowledge base (best-practice tips per section)
 │   ├── requirements.txt
 │   └── .env              # ← NOT committed (see setup below)
 └── frontend/
