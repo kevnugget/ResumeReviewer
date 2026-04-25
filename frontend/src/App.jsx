@@ -254,6 +254,11 @@ function App() {
             rows={10}
             style={{ width: "100%", padding: "0.75rem", fontSize: "0.9rem", border: "1px solid #ddd", borderRadius: 6, boxSizing: "border-box", resize: "vertical" }}
           />
+          {text && (
+            <p style={{ margin: "0.4rem 0 0", fontSize: "0.78rem", color: "#888", textAlign: "right" }}>
+              {text.length.toLocaleString()} characters · ~{Math.ceil(text.length / 4).toLocaleString()} tokens
+            </p>
+          )}
         </div>
 
         {/* submit button */}
