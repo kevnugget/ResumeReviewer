@@ -99,10 +99,19 @@ Today's date is {today}. Use this to correctly judge whether dates on the resume
 Review the following '{section_name}' section and give specific, actionable feedback tailored to the candidate's background and goals above.
 Keep your response to 3-5 bullet points. Be direct and constructive.
 
+Here is an example of the feedback format you should follow:
+
+Example resume bullet: "Responsible for helping with website development and fixing bugs"
+Example feedback:
+• **Weak action verb** — replace "Responsible for helping" with a direct verb like "Built" or "Debugged" to show ownership.
+• **No measurable impact** — add a specific outcome, e.g. "Reduced bug backlog by 30% over two sprints."
+
+Always use this format: • **Short label** — one sentence of specific, actionable advice.
+
 Relevant best practices to consider:
 {tips_text}
 
-Resume section:
+Resume section to review:
 {section_text}
 
 Feedback:"""
