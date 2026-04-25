@@ -2,10 +2,15 @@ import os
 import json
 import time
 from datetime import date
+from pathlib import Path
 from google import genai
 from google.genai import errors as genai_errors
 from dotenv import load_dotenv
 from rag import retrieve
+
+_PROMPTS_DIR = Path(__file__).parent / "prompts"
+_REVIEW_TEMPLATE = (_PROMPTS_DIR / "review_section.txt").read_text(encoding="utf-8")
+_ASK_TEMPLATE = (_PROMPTS_DIR / "ask_question.txt").read_text(encoding="utf-8")
 
 load_dotenv(override=True)
 
@@ -93,28 +98,13 @@ def review_sections(sections, profile_json=""):
 
         today = date.today().strftime("%B %d, %Y")  # e.g. April 19, 2026
 
-        prompt = f"""You are a resume reviewer helping a college student improve their resume.
-Today's date is {today}. Use this to correctly judge whether dates on the resume are past, current, or future.
-{profile_block}
-Review the following '{section_name}' section and give specific, actionable feedback tailored to the candidate's background and goals above.
-Keep your response to 3-5 bullet points. Be direct and constructive.
-
-Here is an example of the feedback format you should follow:
-
-Example resume bullet: "Responsible for helping with website development and fixing bugs"
-Example feedback:
-• **Weak action verb** — replace "Responsible for helping" with a direct verb like "Built" or "Debugged" to show ownership.
-• **No measurable impact** — add a specific outcome, e.g. "Reduced bug backlog by 30% over two sprints."
-
-Always use this format: • **Short label** — one sentence of specific, actionable advice.
-
-Relevant best practices to consider:
-{tips_text}
-
-Resume section to review:
-{section_text}
-
-Feedback:"""
+        prompt = _REVIEW_TEMPLATE.format(
+            today=today,
+            profile_block=profile_block,
+            section_name=section_name,
+            tips_text=tips_text,
+            section_text=section_text,
+        )
 
         response = _generate_with_retry(prompt)
         feedback[section_name] = response.text.strip()
@@ -140,18 +130,13 @@ def ask_question(question, resume_context, profile_json="", history_json=""):
         except (json.JSONDecodeError, TypeError, KeyError):
             pass
 
-    prompt = f"""You are a resume advisor helping a college student. You only answer questions about resumes, career advice, job applications, and professional development.
-Today's date is {today}.
-{profile_block}
-If the question is not related to resumes, careers, or job applications, respond with exactly:
-"Please ask a question related to your resume."
-
-The student's resume is below for context:
-{resume_context}
-{history_block}
-The student asks: {question}
-
-Give a helpful, specific answer in 2-4 sentences."""
+    prompt = _ASK_TEMPLATE.format(
+        today=today,
+        profile_block=profile_block,
+        resume_context=resume_context,
+        history_block=history_block,
+        question=question,
+    )
 
     response = _generate_with_retry(prompt)
     return response.text.strip()
